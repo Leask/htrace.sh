@@ -231,7 +231,7 @@ function __main__() {
     _exit_ "0"
   fi
 
-  eval set -- "$_GETOPT_PARAMS"
+#  eval set -- "$_GETOPT_PARAMS"
   while true ; do
 
     case $1 in
