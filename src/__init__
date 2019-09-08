@@ -17,16 +17,19 @@ function __main__() {
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
   # shellcheck disable=SC2154
-  readonly _log_directory="${_rel}/log"
-  # shellcheck disable=SC2154
   readonly _log_file="${_init_name}.${_cdate}.log"
-  readonly _log_stdout="${_log_directory}/stdout.log"
-  readonly _log_path="${_log_directory}/${_log_file}"
+  # shellcheck disable=SC2154
+  readonly _log_stdout="${_log}/stdout.log"
+  # shellcheck disable=SC2154
+  readonly _log_path="${_log}/${_log_file}"
 
-  readonly _scan_output="${_log_directory}/scan.out"
+  readonly _scan_output="${_log}/scan.out"
 
   # shellcheck disable=SC2154
   readonly _user_agent_fd="${_src}/useragents"
+
+  # shellcheck disable=SC2154
+  readonly _referer_fd="${_src}/referers"
 
   # We check if we are a root user.
   # if [[ "$EUID" -ne 0 ]] ; then
@@ -53,22 +56,9 @@ function __main__() {
   # shellcheck disable=SC2034
   s_color="true"
 
-  # Path to ssl certificates (CA).
-  if [[ -n "$HTRACE_SSL_PATH" ]] ; then
-
-    # shellcheck disable=SC2034
-    local _ssl_ca_path="$HTRACE_SSL_PATH"
-
-  else
-
-    # shellcheck disable=SC2034
-    local _ssl_ca_path="/etc/ssl/certs/"
-
-  fi
-
   # Default 'curl' command.
-  local _curl_base=""
-  local _curl_base_remote=""
+  local _curl_base=()
+  local _curl_base_remote=()
 
   # Default 'domain' variables.
   local url_state="0"
@@ -97,18 +87,33 @@ function __main__() {
 
   # Default 'method' variable.
   local req_method_state="0"
-  local req_method_type="GET"
+  local req_method_type=("GET")
   local req_method_post=""
-  local req_method_post_value=""
+  local req_method_post_value=()
+  local req_method_post_value_status="0"
 
   # Default 'header' variable.
   local req_header_state="0"
   local req_header_type=()
   local req_header_type_all=()
+  local req_header_type_all_info=""
+  local req_header_type_all_info_fin=""
 
   # Default 'proxy' variable.
   local proxy_state="0"
   local proxy_type=""
+
+  # Default 'resolve' variable.
+  local resolve_state="0"
+  local resolve_type=""
+  local resolve_type_ip=""
+  local resolve_type_port=""
+  local resolve_type_port_num=""
+  local _resolve_type_data=""
+
+  # Default 'interface' variable.
+  local iface_state="0"
+  local iface_type=""
 
   # Default state for all external security tools.
   local all_scans_state="0"
@@ -138,7 +143,35 @@ function __main__() {
   # Set default User-Agent.
   # shellcheck disable=SC2034
   local user_agent_state="0"
-  local _user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36"
+  local _user_agent=""
+
+  # Set Referer.
+  # shellcheck disable=SC2034
+  local referer_state="0"
+  local _referer=""
+
+  # Default 'authentication' variable.
+  # shellcheck disable=SC2034
+  local auth_state="0"
+  local _auth_type=""
+  local _auth_type_curl=""
+
+  # Set default ssl/tls.
+  # shellcheck disable=SC2034
+  local ssl_version_state="0"
+  local _ssl_version=""
+  local _ssl_version_type_sep="-"
+  local _ssl_version_type=""
+  local _ssl_version_msg=""
+  local _ssl_version_openssl_type=""
+
+  local _ssl_version_type_curl=""
+  local _ssl_version_openssl_curl=""
+
+  # Set default ciphers.
+  # shellcheck disable=SC2034
+  local ciphers_state="0"
+  local _ciphers_type=""
 
   # Set redirects limit.
   local max_redirects_state="0"
@@ -157,10 +190,115 @@ function __main__() {
   # Default ip-mask value.
   local _hide_src_ip_state="0"
 
+  # shellcheck disable=SC2034
+  local _rd="0;0;0"
+
+  # shellcheck disable=SC2034
+  local _ccmd=()
+
+  # Set default colors for printf.
+  # For more info please see:
+  #   - https://github.com/trimstray/htrace.sh/wiki/Colors
+  if [[ "$HTRACE_COLORS" == "on" ]] ; then
+
+    # shellcheck disable=SC2034
+    local trgb_3012="1;2;30"
+    # shellcheck disable=SC2034
+    local trgb_3021="2;1;30"
+    # shellcheck disable=SC2034
+    local trgb_3111="1;1;31"
+    # shellcheck disable=SC2034
+    local trgb_3100="0;0;31"
+    # shellcheck disable=SC2034
+    local trgb_3211="1;1;32"
+    # shellcheck disable=SC2034
+    local trgb_3200="0;0;32"
+    # shellcheck disable=SC2034
+    local trgb_3341="4;1;33"
+    # shellcheck disable=SC2034
+    local trgb_3300="0;0;33"
+    # shellcheck disable=SC2034
+    local trgb_3310="0;1;33"
+    # shellcheck disable=SC2034
+    local trgb_3612="1;2;36"
+    # shellcheck disable=SC2034
+    local trgb_3722="2;2;37"
+    # shellcheck disable=SC2034
+    local trgb_3720="2;0;37"
+    # shellcheck disable=SC2034
+    local trgb_3811="1;1;38"
+    # shellcheck disable=SC2034
+    local trgb_3812="1;2;38"
+    # shellcheck disable=SC2034
+    local trgb_3843="4;3;38"
+    # shellcheck disable=SC2034
+    local trgb_40631="6;31;40"
+    # shellcheck disable=SC2034
+    local trgb_40337="3;37;40"
+    # shellcheck disable=SC2034
+    local trgb_40636="6;36;40"
+    # shellcheck disable=SC2034
+    local trgb_44139="1;39;44"
+    # shellcheck disable=SC2034
+    local trgb_9312="1;2;93"
+    # shellcheck disable=SC2034
+    local trgb_9420="2;0;94"
+
+  else
+
+    # shellcheck disable=SC2034
+    local trgb_3012="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3021="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3111="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3100="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3211="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3200="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3341="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3300="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3310="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3612="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3722="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3720="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3811="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_3812="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_40631="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_40337="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_40636="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_44139="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_9312="$_rd"
+    # shellcheck disable=SC2034
+    local trgb_9420="$_rd"
+
+  fi
+
+  if [[ "$HIDE_SRC_IP" == "on" ]] ; then
+
+    _hide_src_ip_state="1"
+
+  fi
+
   # We place here used commands at script runtime, as strings to anything
   # unnecessarily run.
   readonly commands=(basename dirname stat ps date grep cut sed awk chown \
-                     chmod mkdir curl openssl dig mmdblookup bc jq \
+                     chmod mkdir curl openssl dig mmdblookup bc jq fmt \
                      testssl.sh observatory ssllabs-scan \
                      mixed-content-scan nmap whatwaf subfinder)
 
@@ -199,6 +337,9 @@ function __main__() {
 
   fi
 
+  # Running tasks before start user functions.
+  _before_init
+
   # shellcheck disable=SC2154
   _logger "init" \
     "init '${_init_name}' in '${_init_directory}'" && \
@@ -211,8 +352,12 @@ function __main__() {
 
   # Specifies the call parameters of the script, the exact description
   # can be found in _help_ and file README.md.
-  local _short_opt="u:shbM:H:p:a"
-  local _long_opt="help,version,url:,ssl,headers,body,req-method:,req-header:,proxy:,all-scans,testssl,observatory,ssllabs,mixed-content,nse,waf,dns,cache-bypass:,user-agent:,max-redirects:,timeout:,hide-src-ip"
+  local _short_opt="u:shbM:H:p:r:i:a"
+  local _long_opt="help,version,examples,url:,ssl,headers,body,"
+        _long_opt+="req-method:,req-header:,proxy:,resolve:,iface:,"
+        _long_opt+="all-scans,testssl,observatory,ssllabs,mixed-content,"
+        _long_opt+="nse,waf,dns,cache-bypass:,user-agent:,referer:,auth:,"
+        _long_opt+="tlsv:,ciph:,max-redirects:,timeout:,hide-src-ip"
 
   _GETOPT_PARAMS=$(getopt -o "${_short_opt}" --long "${_long_opt}" \
                    -n "${_init_name}" -- "${__script_params[@]}")
@@ -249,6 +394,12 @@ function __main__() {
 
         shift ; _exit_ "0" ;;
 
+      --examples)
+
+        _examples_
+
+        shift ; _exit_ "0" ;;
+
       -u|--url)
 
         export url_state=1
@@ -279,7 +430,7 @@ function __main__() {
 
         export req_method_state=1
 
-        export req_method_type="${2}"
+        export req_method_type=("${2}")
 
         shift 2 ;;
 
@@ -296,6 +447,22 @@ function __main__() {
         export proxy_state=1
 
         export proxy_type="${2}"
+
+        shift 2 ;;
+
+      -r|--resolve)
+
+        export resolve_state=1
+
+        export resolve_type="${2}"
+
+        shift 2 ;;
+
+      -i|--iface)
+
+        export iface_state=1
+
+        export iface_type="${2}"
 
         shift 2 ;;
 
@@ -361,6 +528,42 @@ function __main__() {
 
         export _user_agent="${2}"
 
+        HTTP_USER_AGENT="off"
+
+        shift 2 ;;
+
+      --referer)
+
+        export referer_state=1
+
+        export _referer="${2}"
+
+        HTTP_REFERER="off"
+
+        shift 2 ;;
+
+      --auth)
+
+        export auth_state=1
+
+        export _auth_type="${2}"
+
+        shift 2 ;;
+
+      --tlsv)
+
+        export _ssl_version_state=1
+
+        export _ssl_version="${2}"
+
+        shift 2 ;;
+
+      --ciph)
+
+        export ciphers_state=1
+
+        export _ciphers_type="${2}"
+
         shift 2 ;;
 
       --max-redirects)
@@ -411,9 +614,6 @@ function __main__() {
 
   fi
 
-  # Running tasks before start user functions.
-  _before_init
-
   ################################# USER SPACE #################################
   # ````````````````````````````````````````````````````````````````````````````
   # Put here all your variable declarations, function calls
@@ -439,63 +639,66 @@ function __main__() {
   fi
 
   # shellcheck disable=SC2154
-  if [[ "$req_method_type" == *"POST"* ]] ; then
+  if [[ "${req_method_type[*]}" == *"POST"* ]] ; then
 
-    req_method_post=$(echo "$req_method_type" | awk -v FS="(:|:)" '{print $1}')
-    req_method_post_value=$(echo "$req_method_type" | cut -d ':' -f2-)
+    req_method_post=($(echo "${req_method_type[@]}" | awk -v FS="(:|:)" '{print $1}'))
+    req_method_post_value=($(echo "${req_method_type[@]}" | cut -d ':' -f2-))
 
-    if [[ "$req_method_post" == "POST" ]] ; then
+    if [[ "${req_method_post[*]}" == "POST" ]] ; then
 
-      req_method_type="POST"
+      req_method_type=("POST")
 
     fi
 
-    if [[ -z "$req_method_post_value" ]] ; then
+    if [[ -z "${req_method_post_value[*]}" ]] || \
+       [[ "${req_method_post[*]}" == "${req_method_post_value[*]}" ]] ; then
 
-      req_method_post_value=""
+      req_method_post_value=()
+      req_method_post_value_status="1"
+
+      req_method_type=("GET")
 
     fi
 
   fi
 
   # shellcheck disable=SC2154
-  if [[ "$req_method_type" != "GET" ]] && \
-     [[ "$req_method_type" != "HEAD" ]] && \
-     [[ "$req_method_type" != "POST" ]] && \
-     [[ "$req_method_type" != "PUT" ]] && \
-     [[ "$req_method_type" != "DELETE" ]] && \
-     [[ "$req_method_type" != "CONNECT" ]] && \
-     [[ "$req_method_type" != "OPTIONS" ]] && \
-     [[ "$req_method_type" != "TRACE" ]] ; then
+  # if [[ "${req_method_type[@]}" != "GET" ]] && \
+  #    [[ "${req_method_type[@]}" != "HEAD" ]] && \
+  #    [[ "${req_method_type[@]}" != "POST" ]] && \
+  #    [[ "${req_method_type[@]}" != "PUT" ]] && \
+  #    [[ "${req_method_type[@]}" != "DELETE" ]] && \
+  #    [[ "${req_method_type[@]}" != "CONNECT" ]] && \
+  #    [[ "${req_method_type[@]}" != "OPTIONS" ]] && \
+  #    [[ "${req_method_type[@]}" != "TRACE" ]] ; then
 
-    req_method_type="GET"
+  if [[ -z "${req_method_type[*]}" ]] ; then
+
+    req_method_type=("GET")
 
   fi
 
+  IFS_ORIG="$IFS"
+
   if [[ "$req_header_state" -eq 1 ]] ; then
 
-    for i in "${req_header_type[@]}" ; do
+    IFS=$'\n'
 
-      IFS_ORIG="$IFS"
+    # shellcheck disable=SC2001
+    req_header_type_raw=($(echo "${req_header_type[@]}" | sed 's/ ; /\n/g'))
 
-      IFS=$'\n'
-      # shellcheck disable=SC2001
-      _xarr=($(echo "$i" | sed 's/ ; /\n/g'))
+    IFS=$IFS_ORIG
 
-      IFS=$IFS_ORIG
+    for i in "${req_header_type_raw[@]}" ; do
 
-      for j in "${_xarr[@]}" ; do
+      req_header_type_all_info+="$i, "
 
-        _header_key=$(echo "$j" | cut -d ":" -f1 | sed 's/ //g')
-        _header_value=$(echo "$j" | cut -d ":" -f2- | sed 's/ //g')
-
-        req_header_type_all+=('-H' "${_header_key}: ${_header_value}")
-
-      done
-
-      # echo "${req_header_type_all[@]}"
+      req_header_type_all+=("-H '${i}'")
 
     done
+
+    # shellcheck disable=SC2001
+    req_header_type_all_info_fin=$(echo "$req_header_type_all_info" | sed '$s/, $//')
 
   fi
 
@@ -503,48 +706,87 @@ function __main__() {
   if [[ "$proxy_state" -eq 1 ]] ; then
 
     # shellcheck disable=SC2034
-    if [[ "$_req_method_type" == "POST" ]] ; then
+    if [[ "${req_method_type[*]}" == "POST" ]] ; then
 
       # shellcheck disable=SC2034
-      _curl_base="curl --proxy $proxy_type --request $req_method_type -d \"$req_method_post_value\""
+      _curl_base=("curl --proxy $proxy_type --request ${req_method_type[@]} -d ${req_method_post_value[@]}")
 
     else
 
       # shellcheck disable=SC2034
-      _curl_base="curl --proxy $proxy_type --request $req_method_type"
+      _curl_base=("curl --proxy $proxy_type --request ${req_method_type[@]}")
 
     fi
 
     # shellcheck disable=SC2034
-    _curl_base_remote="curl --proxy $proxy_type"
+    _curl_base_remote=("curl --proxy $proxy_type")
 
   else
 
     # shellcheck disable=SC2034
-    if [[ "$_req_method_type" == "POST" ]] ; then
+    if [[ "${req_method_type[*]}" == "POST" ]] ; then
 
       # shellcheck disable=SC2034
-      _curl_base="curl --request $req_method_type -d \"$req_method_post_value\""
+      _curl_base=("curl --request ${req_method_type[@]} -d ${req_method_post_value[@]}")
 
     else
 
       # shellcheck disable=SC2034
-      _curl_base="curl --request $req_method_type"
+      _curl_base=("curl --request ${req_method_type[@]}")
 
     fi
 
     # shellcheck disable=SC2034
-    _curl_base_remote="curl"
+    _curl_base_remote=("curl")
 
   fi
 
-  # Load user-agents file.
-  if [[ "$user_agent_state" -eq 0 ]] ; then
+  if [[ "$HTTP_USER_AGENT" == "on" ]] ; then
 
-    _load "null" "$_user_agent_fd"
+    # Load user-agents file.
+    if [[ "$user_agent_state" -eq 0 ]] ; then
 
-    # Pick a random entry from the user agents list.
-    _user_agent=${USER_AGENTS[$_random % ${#USER_AGENTS[@]}]}
+      _load "null" "$_user_agent_fd"
+
+      # Pick a random entry from the user agents list.
+      _user_agent=${USER_AGENTS[$_random % ${#USER_AGENTS[@]}]}
+
+    fi
+
+  fi
+
+  if [[ "$HTTP_REFERER" == "on" ]] ; then
+
+    # Load referers file.
+    if [[ "$referer_state" -eq 0 ]] ; then
+
+      RND_STRING=(\
+        "bing" \
+        "duckduckgo" \
+        "wiki" \
+        "twitter" \
+        "search.creativecommons" \
+        "gibiru" \
+        "archive" \
+        "searchencrypt" \
+        "yandex" \
+        "stargpage" \
+        "swisscows" \
+        "google" \
+        "boardreader" \
+        "feedly" \
+        "slideshare"
+        )
+
+      # shellcheck disable=SC2034
+      _referer_string=${RND_STRING[$_random % ${#RND_STRING[@]}]}
+
+      _load "null" "$_referer_fd"
+
+      # Pick a random entry from the user agents list.
+      _referer=${REFERERS[$_random % ${#REFERERS[@]}]}
+
+    fi
 
   fi
 
@@ -586,61 +828,12 @@ function __main__() {
   DomainStrip "$url_type"
 
   # shellcheck disable=SC2154
-  # Set -d|--domain value to variable.
+  # Set -u|--url value to variable.
   local _http_redirect="${_http_proto}${_http_url_with_args}"
 
-  # Set default colors for printf.
-  # shellcheck disable=SC2034
-  local _rd="0;0;29"
-  # shellcheck disable=SC2034
-  local b_trgb="1;2;30"
-  # shellcheck disable=SC2034
-  local b2_trgb="2;1;30"
-  # shellcheck disable=SC2034
-  local e_trgb="1;1;31"
-  # shellcheck disable=SC2034
-  local e2_trgb="0;0;31"
-  # shellcheck disable=SC2034
-  local g_trgb="1;1;32"
-  # shellcheck disable=SC2034
-  local g2_trgb="0;0;32"
-  # shellcheck disable=SC2034
-  local d_trgb="4;1;33"
-  # shellcheck disable=SC2034
-  local d2_trgb="0;0;33"
-  # shellcheck disable=SC2034
-  local i_trgb="1;2;93"
-  # shellcheck disable=SC2034
-  local h_trgb="1;2;36"
-  # shellcheck disable=SC2034
-  local p_trgb="2;2;37"
-  # shellcheck disable=SC2034
-  local p2_trgb="2;0;37"
-  # shellcheck disable=SC2034
-  local c_trgb="1;1;38"
-  # shellcheck disable=SC2034
-  local x_trgb="1;2;38"
-  # shellcheck disable=SC2034
-  local x2_trgb="4;3;38"
-  # shellcheck disable=SC2034
-  local z_trgb="1;39;44"
-  # shellcheck disable=SC2034
-  local v_trgb="2;0;94"
-
-  # shellcheck disable=SC2086,SC2154
-  if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-    # shellcheck disable=SC2154
-    printf '\n     %s %s ' \
-           "$_init_name" "$_version"
-
-  else
-
-    # shellcheck disable=SC2154
-    printf '\n    \e['${z_trgb}'m %s %s \e[m' \
-           "$_init_name" "$_version"
-
-  fi
+  # shellcheck disable=SC2154
+  printf '\n    \e['${trgb_44139}'m %s %s \e[m' \
+         "$_init_name" "$_version"
 
   # Show OpenSSL version.
   _openssl_version=$(openssl version -a | head -n 1 | grep 'OpenSSL\|LibreSSL' | awk '{print $2}')
@@ -649,8 +842,10 @@ function __main__() {
      [[ "$_openssl_version" == "1.1.0g" ]] || \
      [[ "$_openssl_version" == "1.1.0h" ]] || \
      [[ "$_openssl_version" == "1.1.0j" ]] || \
+     [[ "$_openssl_version" == "1.1.1" ]] || \
      [[ "$_openssl_version" == "1.1.1a" ]] || \
-     [[ "$_openssl_version" == "1.1.1b" ]] ; then
+     [[ "$_openssl_version" == "1.1.1b" ]] || \
+     [[ "$_openssl_version" == "1.1.1c" ]] ; then
 
     _openssl_version_status="ok"
     _openssl_version_state="1"
@@ -664,113 +859,347 @@ function __main__() {
 
   if [[ "$_openssl_version_state" -eq 1 ]] ; then
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    printf ' (openssl %s: \e['${trgb_3211}'m%s\e[m)\n\n' \
+           "$_openssl_version" "$_openssl_version_status"
 
-      printf ' (openssl %s: %s)\n\n' \
-             "$_openssl_version" "$_openssl_version_status"
+  else
+
+    printf ' (openssl %s: \e['${trgb_3111}'m%s\e[m)\n\n' \
+           "$_openssl_version" "$_openssl_version_status"
+
+  fi
+
+  if [[ "$resolve_state" -eq 1 ]] ; then
+
+    resolve_type_ip=$(echo "$resolve_type" | awk -v FS="(:|:)" '{print $1}')
+    resolve_type_port=$(echo "$resolve_type" | awk -v FS="(:|:)" '{print $2}')
+
+    if [[ -z "$resolve_type_port" ]] ; then
+
+      # shellcheck disable=SC2154
+      if [[ "$_http_proto_only" == "http" ]] ; then
+
+        resolve_type_port_num="80"
+
+      else
+
+        resolve_type_port_num="443"
+
+      fi
 
     else
 
-      printf ' (openssl %s: \e['${g_trgb}'m%s\e[m)\n\n' \
-             "$_openssl_version" "$_openssl_version_status"
+      resolve_type_port_num="$resolve_type_port"
+
+    fi
+
+    # shellcheck disable=SC2154
+    _resolve_type_data="${_domain_name}:${resolve_type_port_num}:${resolve_type_ip}"
+    _resolve_type_curl="--resolve $_resolve_type_data"
+
+  else
+
+    _resolve_type_data=""
+    _resolve_type_curl=""
+
+  fi
+
+  if [[ "$iface_state" -eq 1 ]] ; then
+
+    _interface_type_curl="--interface $iface_type"
+
+  else
+
+    _interface_type_curl=""
+
+  fi
+
+  if [[ "$referer_state" -eq 1 ]] ; then
+
+    _referer_curl="--referer $_referer"
+
+  fi
+
+  if [[ "$auth_state" -eq 1 ]] ; then
+
+    _h_auth_type=$(echo "${_auth_type}" | cut -d ":" -f1 | sed 's/ //g')
+    _h_auth_key=$(echo "${_auth_type}" | cut -d ":" -f2 | sed 's/ //g')
+    _h_auth_value=$(echo "${_auth_type}" | cut -d ":" -f3 | sed 's/ //g')
+
+    if [[ ! -z "$_h_auth_key" ]] && \
+       [[ ! -z "$_h_auth_value" ]] ; then
+
+      if [[ "$_h_auth_type" == "basic" ]] ; then
+
+        _auth_type_curl="--user ${_h_auth_key}:${_h_auth_value}"
+
+      elif [[ "$_h_auth_type" == "proxy" ]] ; then
+
+        if [[ "$proxy_state" -eq 1 ]] ; then
+
+          _auth_type_curl="--proxy-user ${_h_auth_key}:${_h_auth_value}"
+
+        else
+
+          _auth_type_curl="--user ${_h_auth_key}:${_h_auth_value}"
+
+        fi
+
+      fi
+
+    elif [[ ! -z "$_h_auth_key" ]] && \
+         [[ -z "$_h_auth_value" ]] ; then
+
+      if [[ "$_h_auth_type" == "cookie" ]] ; then
+
+        if [[ -e "$_h_auth_key" ]] ; then
+
+          _auth_type_curl="--cookie ${_h_auth_key}"
+
+        else
+
+          _auth_type_curl=""
+
+        fi
+
+      fi
+
+    elif [[ -z "$_h_auth_key" ]] && \
+         [[ -z "$_h_auth_value" ]] ; then
+
+      if [[ "$_h_auth_type" == "cookie" ]] ; then
+
+        if [[ -e "$HTRACE_COOKIE_PATH" ]] ; then
+
+          _auth_type_curl="--cookie ${HTRACE_COOKIE_PATH}"
+
+        else
+
+          _auth_type_curl=""
+
+        fi
+
+      fi
+
+    else
+
+      _auth_type_curl=""
 
     fi
 
   else
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    _auth_type_curl=""
 
-      printf ' (openssl %s: %s)\n\n' \
-             "$_openssl_version" "$_openssl_version_status"
+  fi
+
+  if [[ "$_ssl_version_state" -eq 1 ]] ; then
+
+    if [[ "$_ssl_version" == "ssl2" ]] || \
+       [[ "$_ssl_version" == "ssl3" ]] ; then
+
+      # Default values:
+      _ssl_version_type_sep=""
+      _ssl_version_type=""
+      _ssl_version_msg=""
+      _ssl_version_openssl_type=""
+
+    elif [[ "$_ssl_version" == "1.0" ]] ; then
+
+      _ssl_version_type="tlsv1.0"
+      _ssl_version_openssl_type="tls1"
+      _ssl_version_msg="$_ssl_version"
+
+    elif [[ "$_ssl_version" == "1.1" ]] || \
+         [[ "$_ssl_version" == "1.2" ]] ; then
+
+      _ssl_version_type="tlsv${_ssl_version}"
+      _ssl_version_openssl_type="tls${_ssl_version//./_}"
+      _ssl_version_msg="$_ssl_version"
+
+    elif [[ "$_ssl_version" == "1.3" ]] ; then
+
+      if [[ "$_openssl_version" == "1.1.1"* ]] ; then
+
+        _ssl_version_type="tlsv${_ssl_version}"
+        _ssl_version_openssl_type="tls${_ssl_version//./_}"
+        _ssl_version_msg="$_ssl_version"
+
+      else
+
+        # Default values:
+        _ssl_version_type_sep=""
+        _ssl_version_type=""
+        _ssl_version_msg="not supported"
+        _ssl_version_openssl_type=""
+
+      fi
 
     else
 
-      printf ' (openssl %s: \e['${e_trgb}'m%s\e[m)\n\n' \
-             "$_openssl_version" "$_openssl_version_status"
+      # Default values:
+      _ssl_version_type_sep=""
+      _ssl_version_type=""
+      _ssl_version_msg=""
+      _ssl_version_openssl_type=""
+
+    fi
+
+    _ssl_version_type_curl="${_ssl_version_type_sep}${_ssl_version_type}"
+    # shellcheck disable=SC2034
+    _ssl_version_openssl_curl="${_ssl_version_type_sep}${_ssl_version_openssl_type}"
+
+  fi
+
+  # shellcheck disable=2154
+  if [[ "$ciphers_state" -eq 1 ]] ; then
+
+    if [[ -n "$_ciphers_type" ]] ; then
+
+      _ciphers_type_curl="--ciphers $_ciphers_type"
+
+    else
+
+      _ciphers_type_curl=""
 
     fi
 
   fi
 
-  # shellcheck disable=SC2086,SC2154
-  if [[ "$HTRACE_COLORS" == "off" ]] ; then
+  # For -r|--resolve:
+  _curl_base+=("$_resolve_type_curl")
+  _curl_base_remote+=("$_resolve_type_curl")
 
-    printf '\n    URI: %s%s\n' \
-           "$_http_proto" "$_http_url_with_args"
+  # For --iface:
+  _curl_base+=("$_interface_type_curl")
+  _curl_base_remote+=("$_interface_type_curl")
 
-  else
+  # For --referer:
+  _curl_base+=("$_referer_curl")
+  _curl_base_remote+=("$_referer_curl")
 
-    printf '\n    URI: \e['${d_trgb}'m%s\e['${d_trgb}'m%s\e[m\n' \
-           "$_http_proto" "$_http_url_with_args"
+  # For --auth:
+  _curl_base+=("$_auth_type_curl")
+  _curl_base_remote+=("$_auth_type_curl")
 
-  fi
+  # For --tlsv:
+  _curl_base+=("$_ssl_version_type_curl")
+  _curl_base_remote+=("$_ssl_version_type_curl")
+
+  # For --ciph:
+  _curl_base+=("$_ciphers_type_curl")
+  _curl_base_remote+=("$_ciphers_type_curl ")
+
+  printf '\n    URI: \e['${trgb_3341}'m%s\e['${trgb_3341}'m%s\e[m\n' \
+         "$_http_proto" "$_http_url_with_args"
 
   # Show http(s) domain trace.
-  if [[ "$req_method_type" == "POST" ]] ; then
+  if [[ "${req_method_type[*]}" == "POST" ]] ; then
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    if [[ "$req_method_post_value_status" -eq 1 ]] ; then
 
-      printf '\n         - request-method: %s (payload: %s)\n' \
-             "$req_method_type" "$req_method_post_value"
+      printf '\n         » request-method: \e['${trgb_40631}'m%s\e[m\n' \
+             "${req_method_type[@]}"
 
     else
 
-      printf '\n         - request-method: \e['${b2_trgb}'m%s\e[m (payload: \e['${p_trgb}'m%s\e[m)\n' \
-             "$req_method_type" "$req_method_post_value"
-
-    fi
-
-    if [[ "$cache_bypass_state" -eq 1 ]] ; then
-
-      # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        printf '         - cache-bypass-value: %s\n' \
-               "$cache_bypass_type"
-
-      else
-
-        printf '         - cache-bypass-value: \e['${b2_trgb}'m%s\e[m\n' \
-               "$cache_bypass_type"
-
-      fi
+      printf '\n         » request-method: \e['${trgb_40631}'m%s\e[m\n                           \e['${trgb_40337}'m%s\e[m\n' \
+             "${req_method_type[@]}" "$(echo "${req_method_post_value[@]}" | tr -d "'")"
 
     fi
 
   else
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    printf '\n         » request-method: \e['${trgb_40631}'m%s\e[m\n' \
+           "${req_method_type[@]}"
 
-      printf '\n         - request-method: %s\n' \
-             "$req_method_type"
+  fi
 
-    else
+  if [[ "$auth_state" -eq 1 ]] ; then
 
-      printf '\n         - request-method: \e['${b2_trgb}'m%s\e[m\n' \
-             "$req_method_type"
+    if [[ ! -z "$_auth_type_curl" ]] ; then
+
+      printf '         » authentication: \e['${trgb_40631}'m%s\e[m\n                           \e['${trgb_40337}'m%s:%s\e[m\n' \
+             "$_h_auth_type" "$_h_auth_key" "$_h_auth_value"
+
+    fi
+
+  fi
+
+  if [[ "$req_header_state" -eq 1 ]] ; then
+
+    printf '         » request-header: \e['${trgb_40337}'m%s\e[m\n' \
+           "${req_header_type_all_info_fin}"
+
+  fi
+
+  if [[ "$user_agent_state" -eq 1 ]] ; then
+
+    printf '         » user-agent:     \e['${trgb_40337}'m%s\e[m\n' \
+           "$_user_agent"
+
+  elif [[ "$user_agent_state" -eq 0 ]] && \
+       [[ "$HTTP_USER_AGENT" == "on" ]] ; then
+
+    printf '         » user-agent:     \e['${trgb_40337}'m%s\e[m\n' \
+           "$_user_agent"
+
+  fi
+
+  if [[ "$referer_state" -eq 1 ]] ; then
+
+    printf '         » referer:        \e['${trgb_40337}'m%s\e[m\n' \
+           "$_referer"
+
+  elif [[ "$referer_state" -eq 0 ]] && \
+       [[ "$HTTP_REFERER" == "on" ]] ; then
+
+    printf '         » referer:        \e['${trgb_40337}'m%s\e[m\n' \
+           "$_referer"
+
+  fi
+
+  if [[ "$cache_bypass_state" -eq 1 ]] ; then
+
+    printf '         » cache-bypass:   \e['${trgb_40337}'m%s\e[m\n' \
+           "$cache_bypass_type"
+
+  fi
+
+  if [[ "$_ssl_version_state" -eq 1 ]] ; then
+
+    if [[ ! -z "$_ssl_version_type" ]] || \
+       [[ "$_ssl_version_msg" == "not supported" ]] ; then
+
+      printf '         » tls-version:    \e['${trgb_40337}'m%s\e[m\n' \
+             "$_ssl_version_msg"
 
     fi
 
-    if [[ "$cache_bypass_state" -eq 1 ]] ; then
+  fi
 
-      # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
+  if [[ "$ciphers_state" -eq 1 ]] ; then
 
-        printf '         - cache-bypass-value: %s\n' \
-               "$cache_bypass_type"
+    if [[ ! -z "$_ciphers_type" ]] ; then
 
-      else
-
-        printf '         - cache-bypass-value: \e['${b2_trgb}'m%s\e[m\n' \
-               "$cache_bypass_type"
-
-      fi
+      printf '         » ciphersuite:    \e['${trgb_40337}'m%s\e[m\n' \
+             "$_ciphers_type"
 
     fi
+
+  fi
+
+  if [[ "$resolve_state" -eq 1 ]] ; then
+
+    printf '         » force-resolve:  \e['${trgb_40337}'m%s\e[m\n' \
+           "$_resolve_type_data"
+
+  fi
+
+  if [[ "$iface_state" -eq 1 ]] ; then
+
+    printf '         » interface:      \e['${trgb_40337}'m%s\e[m\n' \
+           "$iface_type"
 
   fi
 
@@ -797,18 +1226,8 @@ function __main__() {
 
       if [[ "$max_redirects_state" -eq 1 ]] ; then
 
-        # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          printf '\n    %s: \e['${e_trgb}'m%s\e[m\n\n' \
-                 "Max redirects" "$_redirects"
-
-        else
-
-          printf '\n    %s: %s\n\n' \
-                 "Max redirects" "$_redirects"
-
-        fi
+        printf '\n    %s: %s\n\n' \
+               "Max redirects" "$_redirects"
 
         _logger "stop" \
           "${_FUNCTION_ID}()" \
@@ -816,18 +1235,8 @@ function __main__() {
 
       else
 
-        # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          printf '\n    %s \e['${e_trgb}'m%s\e[m\n\n' \
-                 "Redirect loop: limit is" "$_redirects"
-
-        else
-
-          printf '\n    %s %s\n\n' \
-                 "Redirect loop: limit is" "$_redirects"
-
-        fi
+        printf '\n    %s %s\n\n' \
+               "Redirect loop: limit is" "$_redirects"
 
         _logger "stop" \
           "${_FUNCTION_ID}()" \
@@ -843,7 +1252,7 @@ function __main__() {
       _http_last="$_http_redirect"
 
       # Init trace function.
-      DomainTrace "$_http_redirect"
+      InitTrace "$_http_redirect"
 
       _rcounter=$((_rcounter + 1))
 
@@ -867,17 +1276,7 @@ function __main__() {
       if [[ "$_fstate" -ne 0 ]] ; then
 
         # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-        else
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    %s\n\n' "Connection error"
-
-        fi
+        printf '\r\n    %s\n\n' "Connection error"
 
         tput sgr0
 
@@ -888,17 +1287,7 @@ function __main__() {
     else
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error (https not detected)"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error (https not detected)"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error (https not detected)"
 
       tput sgr0
 
@@ -917,17 +1306,7 @@ function __main__() {
       if [[ "$_fstate" -ne 0 ]] ; then
 
         # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    %s\n\n' "Connection error"
-
-        else
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-        fi
+        printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
 
         tput sgr0
 
@@ -951,36 +1330,15 @@ function __main__() {
       if [[ "$_fstate" -ne 0 ]] ; then
 
         # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    %s\n\n' "Connection error"
-
-        else
-
-          # shellcheck disable=SC2086,SC2154
-          printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-        fi
+        printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
 
         tput sgr0
 
       else
 
-        # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          printf '\r         › %s: %s\n' \
-                 "Full Report Url" \
-                 "https://www.ssllabs.com/ssltest/analyze.html?d=$_domain_name"
-
-        else
-
-          printf '\r         \e['${_rd}'m›\e[m %s: %s\n' \
-                 "Full Report Url" \
-                 "https://www.ssllabs.com/ssltest/analyze.html?d=$_domain_name"
-
-        fi
+        printf '\r         \e['${_rd}'m›\e[m %s: %s\n' \
+               "Full Report Url" \
+               "https://www.ssllabs.com/ssltest/analyze.html?d=$_domain_name"
 
         tput sgr0
 
@@ -989,17 +1347,7 @@ function __main__() {
     else
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error (https not detected)"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error (https not detected)"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error (https not detected)"
 
       tput sgr0
 
@@ -1028,35 +1376,15 @@ function __main__() {
         if [[ "$_fd_empty" -eq "0" ]] ; then
 
           # shellcheck disable=SC2086,SC2154
-          if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-            # shellcheck disable=SC2086,SC2154
-            printf '\r         › %s\n' "Non-secure resources not found"
-
-          else
-
-            # shellcheck disable=SC2086,SC2154
-            # printf '\r         \e['${_rd}'m›\e[m \e['${g_trgb}'m%s\e[m\n' "Non-secure resources not found"
-            printf '\r         › %s\n' "Non-secure resources not found"
-
-          fi
+          # printf '\r         \e['${_rd}'m›\e[m \e['${trgb_3211}'m%s\e[m\n' "Non-secure resources not found"
+          printf '\r         › %s\n' "Non-secure resources not found"
 
           tput sgr0
 
         else
 
           # shellcheck disable=SC2086,SC2154
-          if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-            # shellcheck disable=SC2086,SC2154
-            printf '\r         › %s\n' "Connection error"
-
-          else
-
-            # shellcheck disable=SC2086,SC2154
-            printf '\r         \e['${_rd}'m›\e[m \e['${e_trgb}'m%s\e[m\n' "Connection error"
-
-          fi
+          printf '\r         \e['${_rd}'m›\e[m \e['${trgb_3111}'m%s\e[m\n' "Connection error"
 
           tput sgr0
 
@@ -1068,18 +1396,8 @@ function __main__() {
         if [[ "$_fd_empty" -eq "0" ]] ; then
 
           # shellcheck disable=SC2086,SC2154
-          if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-            # shellcheck disable=SC2086,SC2154
-            printf '\r         › %s\n' "Non-secure resources not found"
-
-          else
-
-            # shellcheck disable=SC2086,SC2154
-            # printf '\r         \e['${_rd}'m›\e[m \e['${g_trgb}'m%s\e[m\n' "Non-secure resources not found"
-            printf '\r         › %s\n' "Non-secure resources not found"
-
-          fi
+          # printf '\r         \e['${_rd}'m›\e[m \e['${trgb_3211}'m%s\e[m\n' "Non-secure resources not found"
+          printf '\r         › %s\n' "Non-secure resources not found"
 
           tput sgr0
 
@@ -1095,17 +1413,7 @@ function __main__() {
     else
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error (https not detected)"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error (https not detected)"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error (https not detected)"
 
       tput sgr0
 
@@ -1127,17 +1435,7 @@ function __main__() {
     if [[ "$_fstate" -ne 0 ]] ; then
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
 
       tput sgr0
 
@@ -1159,17 +1457,7 @@ function __main__() {
     if [[ "$_fstate" -ne 0 ]] ; then
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
 
       tput sgr0
 
@@ -1191,23 +1479,33 @@ function __main__() {
     if [[ "$_fstate" -ne 0 ]] ; then
 
       # shellcheck disable=SC2086,SC2154
-      if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    %s\n\n' "Connection error"
-
-      else
-
-        # shellcheck disable=SC2086,SC2154
-        printf '\r\n    \e['${e_trgb}'m%s\e[m\n\n' "Connection error"
-
-      fi
+      printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
 
       tput sgr0
 
     fi
 
     echo
+
+    if [[ "$ZONE_TRANSFER_TYPE" != "null" ]] ; then
+
+      # shellcheck disable=SC2154
+      _init_function "DomainZoneTransfer \"${_domain_name}\""
+
+      _fstate="$?"
+
+      if [[ "$_fstate" -ne 0 ]] ; then
+
+        # shellcheck disable=SC2086,SC2154
+        printf '\r\n    \e['${trgb_3111}'m%s\e[m\n\n' "Connection error"
+
+        tput sgr0
+
+      fi
+
+      echo
+
+    fi
 
   fi
 

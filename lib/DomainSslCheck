@@ -27,9 +27,19 @@ function DomainSslCheck() {
   _ssl_domain_name="$_domain_name"
 
   # Default ssl params.
-  _ssl_params_default=$(echo | \
-                       openssl s_client -servername "$_ssl_domain_name" \
-                       -connect "$_ssl_remote_socket" 2>/dev/null)
+  # shellcheck disable=SC2154
+  if [[ -z "$_ssl_version_openssl_curl" ]] ; then
+
+    _ssl_params_default=$(echo | \
+                         openssl s_client -servername "$_ssl_domain_name" \
+                         -connect "$_ssl_remote_socket" 2>/dev/null)
+
+  else
+
+    _ssl_params_default=$(echo | \
+                         openssl s_client "$_ssl_version_openssl_curl" -servername "$_ssl_domain_name" \
+                         -connect "$_ssl_remote_socket" 2>/dev/null)
+  fi
 
   _ssl_params_proto=$(echo "$_ssl_params_default" | \
                        grep "Protocol  :" | \
@@ -41,7 +51,7 @@ function DomainSslCheck() {
                        cut -d ":" -f2- | \
                        tr -d "[:space:]")
 
-  # This variable is used in DomainTrace().
+  # This variable is used in InitTrace().
   # shellcheck disable=SC2034
   _ssl_params_verify=$(echo "$_ssl_params_default" | \
                        grep "Verification: \\|Verification error: " | \
@@ -52,28 +62,15 @@ function DomainSslCheck() {
      # [[ "$_ssl_params_default" == *"No client certificate CA names sent"* ]] ; then
 
     # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    printf '\n    \e['${trgb_3111}'m%s\e[m:\n\n\t%s\n\n' \
+           "SSL error" \
+           "- no peer certificate available"
+           # "- no client certificate CA names sent"
 
-      # shellcheck disable=SC2086,SC2154
-      printf '\n    %s:\n\n\t%s\n\n' \
-             "SSL error" \
-             "- no peer certificate available"
-             # "- no client certificate CA names sent"
-
-    else
-
-      # shellcheck disable=SC2086,SC2154
-      printf '\n    \e['${e_trgb}'m%s\e[m:\n\n\t%s\n\n' \
-             "SSL error" \
-             "- no peer certificate available"
-             # "- no client certificate CA names sent"
-
-    fi
-
-      _logger "stop" \
-        "${_FUNCTION_ID}()" \
-        "no peer certificate available"
-        # "no peer certificate available/no client certificate CA names sent"
+    _logger "stop" \
+      "${_FUNCTION_ID}()" \
+      "no peer certificate available"
+      # "no peer certificate available/no client certificate CA names sent"
 
   fi
 
@@ -91,26 +88,13 @@ function DomainSslCheck() {
   # shellcheck disable=SC2154
   if [[ "$ssl_state" -eq 1 ]] ; then
 
+    # shellcheck disable=SC2086
+    printf '         ssl: \e['${trgb_3211}'m%s\e[m, ' "on"
+
     # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-      printf '         ssl: %s, ' "on"
-
-      # shellcheck disable=SC2086,SC2154
-      printf 'version(%s), cipher(%s)\n' \
-             "$_ssl_params_proto" \
-             "$_ssl_params_cipher"
-
-    else
-
-      printf '         ssl: \e['${g_trgb}'m%s\e[m, ' "on"
-
-      # shellcheck disable=SC2086,SC2154
-      printf 'version(\e['${_ssl_trgb}'m%s\e[m), cipher(\e['${v_trgb}'m%s\e[m)\n' \
-             "$_ssl_params_proto" \
-             "$_ssl_params_cipher"
-
-    fi
+    printf 'version(\e['${_ssl_trgb}'m%s\e[m), cipher(\e['${trgb_9420}'m%s\e[m)\n' \
+           "$_ssl_params_proto" \
+           "$_ssl_params_cipher"
 
   fi
 

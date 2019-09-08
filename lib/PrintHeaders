@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# shellcheck shell=bash
+
+# ``````````````````````````````````````````````````````````````````````````````
+# Function name: PrintHeaders()
+#
+# Description:
+#   Printf headers.
+#
+# Usage:
+#   PrintHeaders domain
+#
+# Examples:
+#   PrintHeaders example.com
+#
+
+function PrintHeaders() {
+
+  # shellcheck disable=SC2034
+  local _FUNCTION_ID="PrintHeaders"
+  local _STATE=0
+
+  # shellcheck disable=SC2086,SC2154
+  printf '\n\e['${trgb_3612}'m    %-4.6s %-12.10s %-15.12s %-22.22s %-16.22s %-21.22s %-5.7s %-7.7s %-5.5s %-8.10s %s\e[m' \
+         "req" \
+         "time_total" \
+         "time_connect" \
+         "local_socket" \
+         "via" \
+         "remote_socket" \
+         "geo" \
+         "proto" \
+         "ver" \
+         "code" \
+         "next_hop"
+
+  printf '\n    %-4.6s %-12.10s %-15.12s %-22.22s %-16.22s %-21.22s %-5.7s %-7.7s %-5.5s %-8.10s %s\e[m\n' \
+         "---" \
+         "----------" \
+         "------------" \
+         "------------" \
+         "---" \
+         "-------------" \
+         "---" \
+         "-----" \
+         "---" \
+         "----" \
+         "--------"
+
+  return $_STATE
+
+}

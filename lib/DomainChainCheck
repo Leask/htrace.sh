@@ -26,14 +26,28 @@ function DomainChainCheck() {
   # shellcheck disable=SC2154
   _ssl_domain_name="$_domain_name"
 
-  _ssl_domain_cert_chain=$(echo | \
-                     openssl s_client -verify 5 -servername "$_ssl_domain_name" \
-                     -connect "$_ssl_remote_socket" 2>&1 | \
-                     sed -ne '/Certificate chain/,/---/p')
+  # shellcheck disable=SC2154
+  if [[ -z "$_ssl_version_openssl_curl" ]] ; then
+
+    _ssl_domain_cert_chain=$(echo | \
+                       openssl s_client -verify 5 -servername "$_ssl_domain_name" \
+                       -connect "$_ssl_remote_socket" 2>&1 | \
+                       sed -ne '/Certificate chain/,/---/p')
+
+  else
+
+    _ssl_domain_cert_chain=$(echo | \
+                       openssl s_client "$_ssl_version_openssl_curl" -verify 5 -servername "$_ssl_domain_name" \
+                       -connect "$_ssl_remote_socket" 2>&1 | \
+                       sed -ne '/Certificate chain/,/---/p')
+
+  fi
 
   # shellcheck disable=SC2154
-  if [[ "$_openssl_version" == "1.1.1a" ]] || \
-     [[ "$_openssl_version" == "1.1.1b" ]] ; then
+  if [[ "$_openssl_version" == "1.1.1" ]] || \
+     [[ "$_openssl_version" == "1.1.1a" ]] || \
+     [[ "$_openssl_version" == "1.1.1b" ]] || \
+     [[ "$_openssl_version" == "1.1.1c" ]] ; then
 
     _chain_verify_subjects=$(echo "$_ssl_domain_cert_chain" | \
                       grep -e "s:" | \
@@ -197,234 +211,131 @@ function DomainChainCheck() {
 
     fi
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    if [[ "$_last_subject_num" -ne "$k" ]] || \
+       [[ "$_root_in_local_store" -eq 1 ]] ; then
 
-      if [[ "$_last_subject_num" -ne "$k" ]] || \
-         [[ "$_root_in_local_store" -eq 1 ]] ; then
+      # shellcheck disable=SC2086,SC2154
+      printf '\n%s         └─\e['${trgb_3021}'m%s:%s\e[m' \
+             "$_t_rst" "$k" "${_chain_complete[$k]}"
 
-        printf '\n%s         └─%s:%s' \
-               "$_t_rst" "$k" "${_chain_complete[$k]}"
+      _init_certificate=1
 
-        _init_certificate=1
+    elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
 
-      elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
+      # shellcheck disable=SC2086
+      printf '\n%s         └─\e['${trgb_3021}'m%s:%s\e[m' \
+             "$_t_rst" "$k" "${_chain_complete[$k]}"
 
-        printf '\n%s         └─%s:%s' \
-               "$_t_rst" "$k" "${_chain_complete[$k]}"
-
-        _init_certificate=1
-
-      else
-
-        _init_certificate=0
-
-      fi
-
-      if [[ "$_init_certificate" -eq 1 ]] ; then
-
-        if [[ "$_first_certificate_status" -eq 1 ]] && \
-           [[ "$k" -eq 0 ]] ; then
-
-          printf ' %s' \
-                 "★"
-
-        fi
-
-        if [[ "${_chain_verify_subjects_stack[$k]}" == "$_ssl_domain_cn" ]] ; then
-
-          if [[ "$_validity_state" -eq 0 ]] ; then
-
-            printf ' %s' \
-                   "✓"
-
-          else
-
-            printf ' %s' \
-                   "!"
-
-          fi
-
-        elif [[ "$_chain_fa" == "$_chain_fb" ]] ; then
-
-          printf ' %s' \
-                 "✓"
-
-        elif [[ "$_root_certificate_issuer" == "$_chain_fb" ]] ; then
-
-          printf ' %s' \
-                 "✓"
-
-        else
-
-          printf ' %s' \
-                 "×"
-
-        fi
-
-        if [[ "$_root_in_local_store" -eq 1 ]] && \
-           [[ "$_last_subject_num" -eq "$k" ]] ; then
-
-          printf ' %s' \
-                 "⊙"
-
-        elif [[ "$_root_in_local_store" -eq 0 ]] && \
-             [[ "$_last_subject_num" -eq "$k" ]] ; then
-
-          printf ' %s' \
-                 "⊙"
-
-        fi
-
-        if [[ "$_last_certificate_duplicate" -eq 1 ]] && \
-           [[ "$_last_subject_num" -eq "$k" ]] ; then
-
-          printf ' %s' \
-                 "2x"
-
-        fi
-
-      fi
-
-      if [[ "${_chain_verify_subjects_stack[$k]}" != "${_chain_verify_issuers_stack[$k]}" ]] ; then
-
-        if [[ "$_root_in_local_store" -eq 1 ]] ; then
-
-        printf '\n%s           ├   %s' \
-               "$_t_rst" "${_chain_verify_issuers_stack[$k]}"
-
-        elif [[ "$_root_in_local_store" -eq 0 ]] ; then
-
-          printf '\n%s           ├   %s' \
-                 "$_t_rst" "${_chain_verify_issuers_stack[$k]}"
-
-        fi
-
-      elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
-
-        printf '\n%s           └ %s' \
-               "$_t_rst" "$_root_certificate_issuer"
-
-      elif [[ "$_root_in_local_store" -eq 1 ]] ; then
-
-        printf '\n%s           └ %s' \
-               "$_t_rst" "$_root_certificate_issuer"
-
-      fi
+      _init_certificate=1
 
     else
 
-      if [[ "$_last_subject_num" -ne "$k" ]] || \
-         [[ "$_root_in_local_store" -eq 1 ]] ; then
+      _init_certificate=0
 
-        printf '\n%s         └─\e['${b2_trgb}'m%s:%s\e[m' \
-               "$_t_rst" "$k" "${_chain_complete[$k]}"
+    fi
 
-        _init_certificate=1
+    if [[ "$_init_certificate" -eq 1 ]] ; then
 
-      elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
+      if [[ "$_first_certificate_status" -eq 1 ]] && \
+         [[ "$k" -eq 0 ]] ; then
 
-        printf '\n%s         └─\e['${b2_trgb}'m%s:%s\e[m' \
-               "$_t_rst" "$k" "${_chain_complete[$k]}"
-
-        _init_certificate=1
-
-      else
-
-        _init_certificate=0
+        # shellcheck disable=SC2086,SC2154
+        printf ' \e['${trgb_3300}'m%s\e[m' \
+               "★"
 
       fi
 
-      if [[ "$_init_certificate" -eq 1 ]] ; then
+      if [[ "${_chain_verify_subjects_stack[$k]}" == "$_ssl_domain_cn" ]] ; then
 
-        if [[ "$_first_certificate_status" -eq 1 ]] && \
-           [[ "$k" -eq 0 ]] ; then
+        # shellcheck disable=SC2154
+        if [[ "$_validity_state" -eq 0 ]] ; then
 
-          printf ' \e['${d2_trgb}'m%s\e[m' \
-                 "★"
-
-        fi
-
-        if [[ "${_chain_verify_subjects_stack[$k]}" == "$_ssl_domain_cn" ]] ; then
-
-          if [[ "$_validity_state" -eq 0 ]] ; then
-
-            printf ' \e['${g2_trgb}'m%s\e[m' \
-                   "✓"
-
-          else
-
-            printf ' \e['${e2_trgb}'m%s\e[m' \
-                   "!"
-
-          fi
-
-        elif [[ "$_chain_fa" == "$_chain_fb" ]] ; then
-
-          printf ' \e['${g2_trgb}'m%s\e[m' \
-                 "✓"
-
-        elif [[ "$_root_certificate_issuer" == "$_chain_fb" ]] ; then
-
-          printf ' \e['${g2_trgb}'m%s\e[m' \
+          # shellcheck disable=SC2086,SC2154
+          printf ' \e['${trgb_3200}'m%s\e[m' \
                  "✓"
 
         else
 
-          printf ' \e['${e2_trgb}'m%s\e[m' \
-                 "×"
+          # shellcheck disable=SC2086
+          printf ' \e['${trgb_3100}'m%s\e[m' \
+                 "!"
 
         fi
 
-        if [[ "$_root_in_local_store" -eq 1 ]] && \
+      elif [[ "$_chain_fa" == "$_chain_fb" ]] ; then
+
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3200}'m%s\e[m' \
+               "✓"
+
+      elif [[ "$_root_certificate_issuer" == "$_chain_fb" ]] ; then
+
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3200}'m%s\e[m' \
+               "✓"
+
+      else
+
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3100}'m%s\e[m' \
+               "×"
+
+      fi
+
+      if [[ "$_root_in_local_store" -eq 1 ]] && \
+         [[ "$_last_subject_num" -eq "$k" ]] ; then
+
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3300}'m%s\e[m' \
+               "⊙"
+
+      elif [[ "$_root_in_local_store" -eq 0 ]] && \
            [[ "$_last_subject_num" -eq "$k" ]] ; then
 
-          printf ' \e['${d2_trgb}'m%s\e[m' \
-                 "⊙"
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3100}'m%s\e[m' \
+               "⊙"
 
-        elif [[ "$_root_in_local_store" -eq 0 ]] && \
-             [[ "$_last_subject_num" -eq "$k" ]] ; then
+      fi
 
-          printf ' \e['${e2_trgb}'m%s\e[m' \
-                 "⊙"
+      if [[ "$_last_certificate_duplicate" -eq 1 ]] && \
+         [[ "$_last_subject_num" -eq "$k" ]] ; then
 
-        fi
-
-        if [[ "$_last_certificate_duplicate" -eq 1 ]] && \
-           [[ "$_last_subject_num" -eq "$k" ]] ; then
-
-          printf ' \e['${d2_trgb}'m%s\e[m' \
+        # shellcheck disable=SC2086
+        printf ' \e['${trgb_3300}'m%s\e[m' \
                  "2x"
 
-        fi
-
       fi
 
-      if [[ "${_chain_verify_subjects_stack[$k]}" != "${_chain_verify_issuers_stack[$k]}" ]] ; then
+    fi
 
-        if [[ "$_root_in_local_store" -eq 1 ]] ; then
+    if [[ "${_chain_verify_subjects_stack[$k]}" != "${_chain_verify_issuers_stack[$k]}" ]] ; then
 
-        printf '\n%s           ├   \e['${x_trgb}'m%s\e[m' \
+      if [[ "$_root_in_local_store" -eq 1 ]] ; then
+
+        # shellcheck disable=SC2086,SC2154
+        printf '\n%s           ├   \e['${trgb_3812}'m%s\e[m' \
                "$_t_rst" "${_chain_verify_issuers_stack[$k]}"
 
-        elif [[ "$_root_in_local_store" -eq 0 ]] ; then
+      elif [[ "$_root_in_local_store" -eq 0 ]] ; then
 
-          printf '\n%s           ├   \e['${x_trgb}'m%s\e[m' \
-                 "$_t_rst" "${_chain_verify_issuers_stack[$k]}"
-
-        fi
-
-      elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
-
-        printf '\n%s           └ \e['${x_trgb}'m%s\e[m' \
-               "$_t_rst" "${_chain_complete[$k]}"
-
-      elif [[ "$_root_in_local_store" -eq 1 ]] ; then
-
-        printf '\n%s           └ \e['${x_trgb}'m%s\e[m' \
-               "$_t_rst" "${_chain_complete[$k]}"
+        # shellcheck disable=SC2086
+        printf '\n%s           ├   \e['${trgb_3812}'m%s\e[m' \
+               "$_t_rst" "${_chain_verify_issuers_stack[$k]}"
 
       fi
+
+    elif [[ "$_root_certificate_issuer" == "${_chain_complete[$k]}" ]] ; then
+
+      # shellcheck disable=SC2086
+      printf '\n%s           └ \e['${trgb_3812}'m%s\e[m' \
+             "$_t_rst" "${_chain_complete[$k]}"
+
+    elif [[ "$_root_in_local_store" -eq 1 ]] ; then
+
+      # shellcheck disable=SC2086
+      printf '\n%s           └ \e['${trgb_3812}'m%s\e[m' \
+             "$_t_rst" "${_chain_complete[$k]}"
 
     fi
 

@@ -42,8 +42,11 @@ __script_params=("$@")
 # Tasks for specific system version.
 if [[ "$OSTYPE" == "darwin"* ]] ; then
 
-  [ ! -z "$(brew --prefix)" ] && PATH=$(brew --prefix)/opt/gnu-getopt/bin:$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH
-  [ ! -z "$(composer global config bin-dir --absolute 2>/dev/null)" ] && PATH=$(composer global config bin-dir --absolute 2>/dev/null):$PATH
+  [ ! -z "$(brew --prefix)" ] && \
+  PATH=$(brew --prefix)/opt/gnu-getopt/bin:$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH
+
+  [ ! -z "$(composer global config bin-dir --absolute 2>/dev/null)" ] && \
+  PATH=$(composer global config bin-dir --absolute 2>/dev/null):$PATH
 
   # Store the name of the script and directory call.
   readonly _init_name="$(basename "$0")"
@@ -72,7 +75,10 @@ readonly _rel="${_init_directory}/.."
 readonly _src="${_rel}/src"
 readonly _lib="${_rel}/lib"
 readonly _tmp="${_rel}/tmp"
+readonly _log="${_rel}/log"
 
+# shellcheck disable=SC1090
+source "${_src}/../config"
 # shellcheck disable=SC1090,SC1091
 source "${_src}/settings"
 # shellcheck disable=SC1090
@@ -80,7 +86,7 @@ source "${_src}/helpers"
 # shellcheck disable=SC1090
 source "${_src}/__init__"
 
-readonly _version="v1.1.3"
+readonly _version="v1.1.5"
 
 
 # We pass arguments to the __main__ function.

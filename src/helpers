@@ -82,7 +82,7 @@ function _get_trap_SIG() {
     local _to_unset=("$PATH")
 
     # Running tasks before the end of the script.
-    _after_init
+    # _after_init
 
     # shellcheck disable=SC2034
     for i in "${_to_unset[@]}" ; do unset i ; done
@@ -112,6 +112,9 @@ function _get_trap_SIG() {
 
   # Normal cursor.
   tput cnorm
+
+  # Running tasks before the end of the script.
+  _after_init
 
   _logger "exit" \
     "$_FUNCTION_ID > ${_SIG_type} (${_STATE})"
@@ -154,8 +157,8 @@ function _logger() {
   _conv_type=$(echo "$_type" | tr '[:lower:]' '[:upper:]')
 
   # shellcheck disable=SC2154
-  if [[ ! -d "$_log_directory" && ! -L "$_log_directory" ]] ; then
-    mkdir -p "$_log_directory" ; fi
+  if [[ ! -d "$_log" && ! -L "$_log" ]] ; then
+    mkdir -p "$_log" ; fi
 
   # Normal debug mode (output the same as the contents of the log file).
   # shellcheck disable=SC2154
@@ -269,18 +272,8 @@ function _sprintf() {
 
         _n=$(( ( _n + 1 ) % 4 ))
 
-        # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          # shellcheck disable=SC2086
-          printf '\r » %s' "${_sc:_n:1}" ; tput sgr0
-
-        else
-
-          # shellcheck disable=SC2086
-          printf '\r » \e['${c_trgb}'m%s\e[m' "${_sc:_n:1}" ; tput sgr0
-
-        fi
+        # shellcheck disable=SC2086
+        printf '\r » \e['${trgb_3811}'m%s\e[m' "${_sc:_n:1}" ; tput sgr0
 
         sleep 0.1
 
@@ -307,16 +300,7 @@ function _sprintf() {
       # shellcheck disable=SC2154
       if [[ "$printf_mode" == "verbose" ]] && [[ "$_s_type" == "info" ]] ; then
 
-        # shellcheck disable=SC2086,SC2154
-        if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-          printf '[%s] %s\n' "$s_char" "$_s_info"
-
-        else
-
-          printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
-
-        fi
+        printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
 
       else
 
@@ -326,31 +310,13 @@ function _sprintf() {
 
           if [[ "$s_color" == "true" ]] ; then
 
-            c_trgb="1;39"
+            trgb_3811="1;39"
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] \e['${c_trgb}'m%s\e[m\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] \e['${trgb_3811}'m%s\e[m\n' "$s_char" "$_s_info"
 
           else
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
 
           fi
 
@@ -358,31 +324,13 @@ function _sprintf() {
 
           if [[ "$s_color" == "true" ]] ; then
 
-            c_trgb="1;43"
+            trgb_3811="1;43"
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] \e['${c_trgb}'m%s\e[m\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] \e['${trgb_3811}'m%s\e[m\n' "$s_char" "$_s_info"
 
           else
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
 
           fi
 
@@ -390,31 +338,13 @@ function _sprintf() {
 
           if [[ "$s_color" == "true" ]] ; then
 
-            c_trgb="1;41"
+            trgb_3811="1;41"
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] \e['${c_trgb}'m%s\e[m\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] \e['${trgb_3811}'m%s\e[m\n' "$s_char" "$_s_info"
 
           else
 
-            # shellcheck disable=SC2086,SC2154
-            if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-              printf '[%s] %s\n' "$s_char" "$_s_info"
-
-            else
-
-              printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
-
-            fi
+            printf '[\e['${s_trgb}'m%s\e[m] %s\n' "$s_char" "$_s_info"
 
           fi
 
@@ -438,7 +368,7 @@ function _sprintf() {
   # shellcheck disable=SC2154
   sed 's/^/         › /' "$_scan_output" | \
   sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | \
-  sed 's/\r//' | grep "› ."
+  sed 's/\r//' | grep "› ." | fmt -w "$MAX_WIDTH" -s
 
   # shellcheck disable=SC2154
   : >"$_scan_output"
@@ -559,48 +489,28 @@ function _init_function() {
     _msg_y=$(echo "$_msg" | cut -d ":" -f2-)
 
     # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
-
-      # shellcheck disable=SC2086,SC2154
-      printf '    %s (%s)\n\n' \
-             "$_msg_x" "$_msg_y"
-
-    else
-
-      # shellcheck disable=SC2086,SC2154
-      printf '    \e['${c_trgb}'m%s\e[m \e['${p_trgb}'m(%s)\e[m\n\n' \
-             "$_msg_x" "$_msg_y"
-
-    fi
+    printf '    \e['${trgb_3811}'m%s\e[m \e['${trgb_3722}'m(%s)\e[m\n\n' \
+           "$_msg_x" "$_msg_y"
 
     _logger "info" \
       "${_FUNCTION_ID}()" \
       "$_msg"
 
-    # shellcheck disable=SC2086,SC2154
-    if [[ "$HTRACE_COLORS" == "off" ]] ; then
+    # shellcheck disable=SC2154
+    if [[ "$_scan_type" == "active" ]] ; then
 
-      # shellcheck disable=SC2154
-      printf '       - scan-type: %s\n\n' "$_scan_type"
+      # shellcheck disable=SC2086,SC2154
+      printf '       - scan-type: \e['${trgb_3100}'m%s\e[m\n\n' "$_scan_type"
+
+    elif [[ "$_scan_type" == "passive" ]] ; then
+
+      # shellcheck disable=SC2086,SC2154
+      printf '       - scan-type: \e['${trgb_3200}'m%s\e[m\n\n' "$_scan_type"
 
     else
 
-      if [[ "$_scan_type" == "active" ]] ; then
-
-        # shellcheck disable=SC2154
-        printf '       - scan-type: \e['${e2_trgb}'m%s\e[m\n\n' "$_scan_type"
-
-      elif [[ "$_scan_type" == "passive" ]] ; then
-
-        # shellcheck disable=SC2154
-        printf '       - scan-type: \e['${g2_trgb}'m%s\e[m\n\n' "$_scan_type"
-
-      else
-
-        # shellcheck disable=SC2154
-        printf '       - scan-type: \e['${d2_trgb}'m%s\e[m\n\n' "$_scan_type"
-
-      fi
+      # shellcheck disable=SC2086,SC2154
+      printf '       - scan-type: \e['${trgb_3300}'m%s\e[m\n\n' "$_scan_type"
 
     fi
 
@@ -709,20 +619,18 @@ function _help_() {
 
   Usage:
 
-    $_init_name <option|long-option>
+    $_init_name <option|long-option> [value]
 
   Examples:
 
+    $_init_name -u https://example.com -s -h -b
     $_init_name -u https://example.com --all-scans
-    $_init_name -u https://example.com -s -h --testssl --ssllabs
-    $_init_name -u https://example.com -h -M 'POST:name=admin&num=12'
-    $_init_name --url https://example.com --cache-bypass \"?\${RANDOM}\"
-    $_init_name --url https://example.com --ssl --headers --proxy \"socks5h://127.0.0.1:9501\"
 
   Options:
 
         --help                                show this message
         --version                             show script version
+        --examples                            show script examples
 
     Standard:
 
@@ -733,6 +641,8 @@ function _help_() {
         -M|--req-method <value>               set request method (default: GET)
         -H|--req-header <value>               set request header(s)
         -p|--proxy <value>                    set proxy server (not for external tools)
+        -r|--resolve <value>                  resolve the host+port to this address
+        -i|--iface <value>                    set network interface (or address)
         -a|--all-scans                        use all external security tools
 
     Security tools:
@@ -743,12 +653,16 @@ function _help_() {
         --mixed-content                       scan website for non-secure resources (mixed-content-scan)
         --nse                                 scan website and domain with nse library (nmap)
         --waf                                 detect and bypass web application firewalls (whatwaf)
-        --dns                                 enumerate subdomains of website (subfinder)
+        --dns                                 enumerate subdomains (subfinder) and perform zone transfer
 
     Extended:
 
         --cache-bypass <value>                try (proxy) cache bypass
         --user-agent <value>                  set 'User-Agent' header
+        --referer <value>                     set 'Referer' header
+        --auth <value>                        set authentication method
+        --tlsv <value>                        set tls version
+        --ciph <value>                        set of cryptographic algorithm
         --max-redirects <num>                 set max redirects (default: 10)
         --timeout <num>                       set max timeout (default: 15)
         --hide-src-ip                         hide source ip from output
@@ -758,6 +672,73 @@ function _help_() {
   This is free software, and you are welcome to redistribute it
   under certain conditions; for more details please see
   <http://www.gnu.org/licenses/>.
+
+"
+
+  return $_STATE
+
+}
+
+# ``````````````````````````````````````````````````````````````````````````````
+# Function name: _examples_()
+#
+# Description:
+#   Show htrace.sh examples.
+#
+# Usage:
+#   _examples_
+#
+# Examples:
+#   _examples_
+#
+
+function _examples_() {
+
+  local _FUNCTION_ID="_examples_"
+  local _STATE=0
+
+  # shellcheck disable=SC2154
+  printf "%s" "
+  Original: https://github.com/trimstray/htrace.sh/wiki/One-liners
+
+  Check redirects
+    › htrace.sh -u https://example.com
+
+  Show basic ssl info and response headers
+    › htrace.sh -u https://example.com -s -h
+
+  Show response body
+    › htrace.sh -u https://example.com -b
+
+  Set POST request method
+    › htrace.sh -u https://example.com -h -M \"POST:'{\"username\":\"xyz\",\"password\":\"xyz\"}'\"
+                                              ^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                               /                    \\
+                                              /                      \\
+                                         POST method          POST method value
+
+  Pin a single request to a specified IP address
+    › htrace.sh -u https://example.com -h --resolve \"xxx.xxx.xxx.xxx\"
+
+  Scan SSL domain configuration
+    › htrace.sh -u https://example.com --ssllabs --testssl
+
+  Show and analyse HTTP response headers
+    › htrace.sh -u https://example.com -h --observatory
+
+  Enumerate subdomains and perform zone transfer
+    › htrace.sh -u https://example.com --dns
+
+  Set credentials to access a URL
+    # Standard authentication:
+    › htrace.sh -u https://example.com -h --auth \"basic:foo:bar\"
+    # Proxy authentication:
+    › htrace.sh -u https://example.com -h --auth \"proxy:foo:bar\"
+    # Cookie authentication:
+    › htrace.sh -u https://example.com -h --auth \"cookie:/tmp/example.com.cookie\"
+
+  Set specific TLS version and Ciphersuite
+    › htrace.sh -u https://example.com -s --tlsv 1.1 --ciph \"TLS_DHE_RSA_WITH_AES_256_CBC_SHA\"
 
 "
 
@@ -785,6 +766,8 @@ function _before_init() {
   local _FUNCTION_ID="_before_init"
   local _STATE=0
 
+  mkdir -p "$_log"
+
   # shellcheck disable=2154
   cd "$_init_directory" || \
   _logger "stop" \
@@ -809,6 +792,58 @@ function _before_init() {
     fi
 
   done
+
+  if [[ -z "$HTRACE_COLORS" ]] ; then
+
+    export HTRACE_COLORS="on"
+
+  elif [[ "$HTRACE_COLORS" != "on" ]] || \
+       [[ "$HTRACE_COLORS" != "off" ]] ; then
+
+    export HTRACE_COLORS="on"
+
+  fi
+
+  # Path to ssl certificates (CA).
+  if [[ -z "$HTRACE_SSL_PATH" ]] ; then
+
+    # shellcheck disable=SC2034
+    export _ssl_ca_path="/etc/ssl/certs/"
+
+  else
+
+    # shellcheck disable=SC2034
+    export _ssl_ca_path="$HTRACE_SSL_PATH"
+
+  fi
+
+  _max_width_current=$(tput cols)
+
+  if [[ -z "$MAX_WIDTH" ]] || \
+     [[ "$MAX_WIDTH" == "auto" ]] ; then
+
+    if [[ "$_max_width_current" -gt 150 ]] ; then
+
+      export MAX_WIDTH="150"
+
+    else
+
+      export MAX_WIDTH=$((_max_width_current - 5))
+
+    fi
+
+  fi
+
+  if [[ -z "$HIDE_SRC_IP" ]] ; then
+
+    export HIDE_SRC_IP="off"
+
+  elif [[ "$HIDE_SRC_IP" != "on" ]] || \
+       [[ "$HIDE_SRC_IP" != "off" ]] ; then
+
+    export HIDE_SRC_IP="off"
+
+  fi
 
   # Invisible cursor.
   # tput civis
@@ -842,8 +877,12 @@ function _after_init() {
     "${_FUNCTION_ID}()" \
     "directory change error: '$_init_directory'"
 
-  # shellcheck disable=SC2154
-  : >"$_scan_output"
+  # shellcheck disable=SC2066,SC2154
+  if [[ -d "$_log" ]] ; then
+
+    : >"$_scan_output"
+
+  fi
 
   # shellcheck disable=SC2066,SC2154
   for i in "$_tmp" ; do
